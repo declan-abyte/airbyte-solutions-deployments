@@ -1,0 +1,45 @@
+# Secrets (unencrypted)
+*.secret
+*.key
+!*.enc.*
+secrets.yaml
+secrets-*.yaml
+
+# Helm
+charts/
+*.tgz
+Chart.lock
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+override.tf
+override.tf.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+.cache/
+
+# Local testing
+local/
+tmp/
+
+# Kubeconfig (don't commit cluster credentials)
+kubeconfig
+*.kubeconfig
+
+# ArgoCD local config
+.argocd/
+

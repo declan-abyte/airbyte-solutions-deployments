@@ -1,0 +1,4 @@
+# Encrypt secrets with SOPS
+secrets/**/*.enc.yaml diff=sopsdiffer
+*.enc.yaml diff=sopsdiffer
+

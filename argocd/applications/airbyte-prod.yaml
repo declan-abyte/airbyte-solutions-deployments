@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: airbyte-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://charts.airbyte.com
+    chart: airbyte
+    targetRevision: 0.50.0  # Update to latest version
+    
+    helm:
+      releaseName: airbyte
+      valueFiles:
+        - $values/base/helm/values.yaml
+        - $values/environments/prod/values.yaml
+  
+  # Reference to values repository
+  sources:
+    - repoURL: https://github.com/your-org/airbyte-solutions-deployments.git
+      targetRevision: main
+      ref: values
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: airbyte
+  
+  syncPolicy:
+    # Manual sync for production
+    automated: null
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+

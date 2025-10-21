@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: airbyte-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://charts.airbyte.com
+    chart: airbyte
+    targetRevision: 0.50.0  # Update to latest version
+    
+    helm:
+      releaseName: airbyte
+      valueFiles:
+        - $values/base/helm/values.yaml
+        - $values/environments/dev/values.yaml
+      
+      # Reference to values repository
+      values: |
+        # Additional inline values can go here
+  
+  # Reference to values repository
+  sources:
+    - repoURL: https://github.com/your-org/airbyte-solutions-deployments.git
+      targetRevision: main
+      ref: values
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: airbyte
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  # Health check configuration
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
