@@ -1,73 +1,42 @@
-# Staging environment overrides
+postgresql:
+  enabled: false
 
 global:
-  edition: "community"
+  edition: "enterprise"
 
-webapp:
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+  enterprise:
+    secretName: airbyte-config-secrets # Secret name where an Airbyte license key is stored
+    licenseKeySecretKey: license-key # The key within `licenseKeySecretName` where the Airbyte license key is stored
 
-server:
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
+  airbyteUrl: "https://declan-v2.solutions-architects.internal.airbyte.dev" # The URL where Airbyte will be reached; This should match your Ingress host
 
-worker:
-  replicaCount: 2  # Multiple workers for staging
-  resources:
-    requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
-      cpu: 2000m
-      memory: 2Gi
+  auth:
+    instanceAdmin:
+      firstName: "Declan"
+      lastName:  "Healey"
+      # emailSecretKey: "instance-admin-email" # The key within `emailSecretName` where the initial user's email is stored
+      # passwordSecretKey: "instance-admin-password" # The key within `passwordSecretName` where the initial user's password is stored
+      
+  database:
+    secretName: "airbyte-config-secrets" # e.g. "airbyte-config-secrets"
+    host: "airbyte-sme-declan.cxmwi26kgnpz.us-west-1.rds.amazonaws.com"
+    port: 5432
+    name: "airbyte"
+    userSecretKey: "database-user" # e.g. "database-user"
+    passwordSecretKey: "database-password" # e.g."database-password"
 
-postgresql:
-  primary:
-    persistence:
-      size: 20Gi
-    resources:
-      requests:
-        cpu: 250m
-        memory: 512Mi
-      limits:
-        cpu: 1000m
-        memory: 1Gi
+  storage:
+    secretName: "airbyte-config-secrets"
+    type: s3 # default storage is minio. Set to s3, gcs, or azure, according to what you use.
 
-minio:
-  persistence:
-    size: 50Gi
-
-# Enable ingress for staging
-ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  hosts:
-    - host: airbyte-staging.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: airbyte-staging-tls
-      hosts:
-        - airbyte-staging.example.com
-
-# Enable metrics
-metrics:
-  enabled: true
-  serviceMonitor:
-    enabled: true
-
+    bucket:
+      log: airbyte-sme-declan
+      state: airbyte-sme-declan
+      workloadOutput: airbyte-sme-declan
+      activityPayload: airbyte-sme-declan
+      
+    s3:
+      region: "us-west-1"
+      authenticationType: credentials
+      accessKeyId: "s3-access-key-id"
+      secretAccessKey: "s3-secret-access-key"
