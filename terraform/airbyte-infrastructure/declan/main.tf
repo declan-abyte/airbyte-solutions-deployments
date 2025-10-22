@@ -138,6 +138,36 @@ module "load_balancer_controller_irsa_role" {
 }
 
 ################################################################################
+# S3 Bucket for Data Storage
+################################################################################
+
+module "airbyte_data_bucket" {
+  source = "../../modules/s3"
+
+  bucket_name       = "${var.cluster_name}-airbyte-data"
+  enable_versioning = true
+  force_destroy     = true  # Set to false for production to prevent accidental deletion
+
+  # Lifecycle rules for cost optimization
+  lifecycle_rules = [
+    {
+      id                         = "transition-old-data"
+      enabled                    = true
+      filter_prefix              = "data/"
+      transition_days            = 90
+      transition_storage_class   = "STANDARD_IA"
+      noncurrent_version_expiration_days = 30
+    }
+  ]
+
+  tags = merge(var.tags, {
+    Name        = "${var.cluster_name}-data-bucket"
+    Purpose     = "airbyte-data-storage"
+    Environment = "development"
+  })
+}
+
+################################################################################
 # RDS PostgreSQL Database
 ################################################################################
 
@@ -160,8 +190,19 @@ module "postgres_db" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  # Allow access from EKS cluster
-  allowed_security_groups = [module.eks.cluster_security_group_id]
+  # Allow access from EKS cluster nodes (using the AWS-managed cluster security group)
+  allowed_security_groups = [module.eks.cluster_primary_security_group_id]
+
+  # Parameter group configuration to disable SSL requirement (development only)
+  create_db_parameter_group = true
+  parameter_group_family    = "postgres17"
+  parameters = [
+    {
+      name         = "rds.force_ssl"
+      value        = "0"  # Disable SSL requirement
+      apply_method = "immediate"
+    }
+  ]
 
   # Free tier configuration
   multi_az                = false

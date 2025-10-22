@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: airbyte-sme-declan-v2
-  namespace: airbyte-sme-declan-v2
+  name: airbyte
+  namespace: airbyte
   annotations:
     alb.ingress.kubernetes.io/group.name: "airbyte-shared-alb"
 
@@ -17,7 +17,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: declan-v2.solutions-architects.internal.airbyte.dev
+    - host: airbyte-declan.solutions-architects.internal.airbyte.dev
       http:
         paths:
           - backend:

@@ -4,6 +4,7 @@
 !*.enc.*
 secrets.yaml
 secrets-*.yaml
+secrets/
 
 # Helm
 charts/

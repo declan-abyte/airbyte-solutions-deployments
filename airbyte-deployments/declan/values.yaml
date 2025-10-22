@@ -8,7 +8,7 @@ global:
     secretName: airbyte-config-secrets # Secret name where an Airbyte license key is stored
     licenseKeySecretKey: license-key # The key within `licenseKeySecretName` where the Airbyte license key is stored
 
-  airbyteUrl: "https://declan-v2.solutions-architects.internal.airbyte.dev" # The URL where Airbyte will be reached; This should match your Ingress host
+  airbyteUrl: "https://airbyte-declan.solutions-architects.internal.airbyte.dev" # The URL where Airbyte will be reached; This should match your Ingress host
 
   auth:
     instanceAdmin:
@@ -19,9 +19,9 @@ global:
       
   database:
     secretName: "airbyte-config-secrets" # e.g. "airbyte-config-secrets"
-    host: "airbyte-sme-declan.cxmwi26kgnpz.us-west-1.rds.amazonaws.com"
+    host: "airbyte-eks-declan-postgres.cxmwi26kgnpz.us-west-1.rds.amazonaws.com"
     port: 5432
-    name: "airbyte"
+    name: "postgres"
     userSecretKey: "database-user" # e.g. "database-user"
     passwordSecretKey: "database-password" # e.g."database-password"
 
@@ -30,13 +30,13 @@ global:
     type: s3 # default storage is minio. Set to s3, gcs, or azure, according to what you use.
 
     bucket:
-      log: airbyte-sme-declan
-      state: airbyte-sme-declan
-      workloadOutput: airbyte-sme-declan
-      activityPayload: airbyte-sme-declan
+      log: airbyte-eks-declan-airbyte-data
+      state: airbyte-eks-declan-airbyte-data
+      workloadOutput: airbyte-eks-declan-airbyte-data
+      activityPayload: airbyte-eks-declan-airbyte-data
       
     s3:
       region: "us-west-1"
       authenticationType: credentials
-      accessKeyId: "s3-access-key-id"
-      secretAccessKey: "s3-secret-access-key"
+      # accessKeyId: "s3-access-key-id"
+      # secretAccessKey: "s3-secret-access-key"

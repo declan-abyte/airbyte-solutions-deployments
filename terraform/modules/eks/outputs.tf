@@ -39,6 +39,11 @@ output "cluster_security_group_id" {
   value       = aws_security_group.cluster.id
 }
 
+output "cluster_primary_security_group_id" {
+  description = "The cluster primary security group ID created by EKS (used by nodes and control plane)"
+  value       = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+}
+
 output "cluster_certificate_authority_data" {
   description = "Base64 encoded certificate data required to communicate with the cluster"
   value       = aws_eks_cluster.this.certificate_authority[0].data

@@ -171,7 +171,7 @@ resource "aws_db_instance" "this" {
   max_allocated_storage = var.max_allocated_storage
   storage_type         = var.storage_type
   storage_encrypted    = var.storage_encrypted
-  kms_key_id           = var.storage_encrypted ? coalesce(var.kms_key_id, try(aws_kms_key.rds[0].arn, null)) : null
+  kms_key_id           = var.storage_encrypted && (var.kms_key_id != null || var.create_kms_key) ? coalesce(var.kms_key_id, try(aws_kms_key.rds[0].arn, null)) : null
   iops                 = var.iops
   storage_throughput   = var.storage_throughput
 
@@ -208,7 +208,7 @@ resource "aws_db_instance" "this" {
   monitoring_interval             = var.monitoring_interval
   monitoring_role_arn             = var.monitoring_interval > 0 ? var.monitoring_role_arn != null ? var.monitoring_role_arn : aws_iam_role.enhanced_monitoring[0].arn : null
   performance_insights_enabled    = var.performance_insights_enabled
-  performance_insights_kms_key_id = var.performance_insights_enabled ? coalesce(var.performance_insights_kms_key_id, try(aws_kms_key.rds[0].arn, null)) : null
+  performance_insights_kms_key_id = var.performance_insights_enabled && (var.performance_insights_kms_key_id != null || var.create_kms_key) ? coalesce(var.performance_insights_kms_key_id, try(aws_kms_key.rds[0].arn, null)) : null
   performance_insights_retention_period = var.performance_insights_enabled ? var.performance_insights_retention_period : null
 
   # Multi-AZ & HA

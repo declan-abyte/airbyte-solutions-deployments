@@ -46,6 +46,11 @@ output "cluster_security_group_id" {
   value       = module.eks.cluster_security_group_id
 }
 
+output "cluster_primary_security_group_id" {
+  description = "The cluster primary security group ID created by EKS (used by nodes and control plane)"
+  value       = module.eks.cluster_primary_security_group_id
+}
+
 ################################################################################
 # IAM Outputs
 ################################################################################
@@ -115,6 +120,30 @@ output "configure_kubectl" {
 output "get_token" {
   description = "Command to get authentication token"
   value       = "aws eks get-token --cluster-name ${module.eks.cluster_id}"
+}
+
+################################################################################
+# S3 Bucket Outputs
+################################################################################
+
+output "s3_bucket_name" {
+  description = "Name of the S3 bucket for Airbyte data storage"
+  value       = module.airbyte_data_bucket.bucket_id
+}
+
+output "s3_bucket_arn" {
+  description = "ARN of the S3 bucket"
+  value       = module.airbyte_data_bucket.bucket_arn
+}
+
+output "s3_bucket_domain_name" {
+  description = "Domain name of the S3 bucket"
+  value       = module.airbyte_data_bucket.bucket_domain_name
+}
+
+output "s3_bucket_regional_domain_name" {
+  description = "Regional domain name of the S3 bucket"
+  value       = module.airbyte_data_bucket.bucket_regional_domain_name
 }
 
 ################################################################################
