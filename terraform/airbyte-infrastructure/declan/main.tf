@@ -136,3 +136,55 @@ module "load_balancer_controller_irsa_role" {
 
   tags = var.tags
 }
+
+################################################################################
+# RDS PostgreSQL Database
+################################################################################
+
+module "postgres_db" {
+  source = "../../modules/rds"
+
+  identifier        = "${var.cluster_name}-postgres"
+  engine            = "postgres"
+  engine_version    = "17.4"
+  instance_class    = "db.t4g.micro"  # Free tier eligible
+  allocated_storage = 20               # Free tier allows up to 20GB
+  storage_type      = "gp3"
+  storage_encrypted = true
+
+  database_name = "postgres"
+  username      = "postgres"
+  password      = "password"
+  port          = 5432
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+
+  # Allow access from EKS cluster
+  allowed_security_groups = [module.eks.cluster_security_group_id]
+
+  # Free tier configuration
+  multi_az                = false
+  backup_retention_period = 7
+  skip_final_snapshot     = true  # Set to false for production
+  publicly_accessible     = false
+
+  # Maintenance and upgrades
+  maintenance_window         = "Mon:04:00-Mon:05:00"
+  auto_minor_version_upgrade = true
+  apply_immediately          = false
+
+  # Monitoring (free tier has basic monitoring)
+  monitoring_interval              = 0  # Enhanced monitoring not in free tier
+  performance_insights_enabled     = false  # Not in free tier
+  enabled_cloudwatch_logs_exports  = ["postgresql", "upgrade"]
+
+  # Security
+  deletion_protection = false  # Set to true for production
+
+  tags = merge(var.tags, {
+    Name        = "${var.cluster_name}-postgres"
+    Environment = "development"
+    Tier        = "free"
+  })
+}

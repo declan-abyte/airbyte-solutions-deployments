@@ -117,3 +117,44 @@ output "get_token" {
   value       = "aws eks get-token --cluster-name ${module.eks.cluster_id}"
 }
 
+################################################################################
+# RDS Database Outputs
+################################################################################
+
+output "postgres_db_endpoint" {
+  description = "Connection endpoint for PostgreSQL database"
+  value       = module.postgres_db.db_instance_endpoint
+}
+
+output "postgres_db_address" {
+  description = "Hostname of the PostgreSQL database"
+  value       = module.postgres_db.db_instance_address
+}
+
+output "postgres_db_port" {
+  description = "Port of the PostgreSQL database"
+  value       = module.postgres_db.db_instance_port
+}
+
+output "postgres_db_name" {
+  description = "Name of the PostgreSQL database"
+  value       = module.postgres_db.db_instance_name
+}
+
+output "postgres_db_username" {
+  description = "Master username for the PostgreSQL database"
+  value       = module.postgres_db.db_instance_username
+  sensitive   = true
+}
+
+output "postgres_db_security_group_id" {
+  description = "Security group ID of the PostgreSQL database"
+  value       = module.postgres_db.security_group_id
+}
+
+output "postgres_connection_string" {
+  description = "PostgreSQL connection string (without password)"
+  value       = "postgresql://${module.postgres_db.db_instance_username}@${module.postgres_db.db_instance_address}:${module.postgres_db.db_instance_port}/${module.postgres_db.db_instance_name}"
+  sensitive   = true
+}
+
