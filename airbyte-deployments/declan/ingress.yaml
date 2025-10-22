@@ -5,12 +5,10 @@ metadata:
   namespace: airbyte
   annotations:
     alb.ingress.kubernetes.io/group.name: "airbyte-shared-alb"
-
-    kubernetes.io/ingress.class: "alb"
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
 
-    alb.ingress.kubernetes.io/subnets: subnet-03f37bc3bcdb87c93,subnet-0e6c4ea35fcfb48a0
+    alb.ingress.kubernetes.io/subnets: subnet-0c8359038d97822ee,subnet-0712bd6443332cad8
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-1:705229835085:certificate/cc4ec467-8507-45c9-97f0-5453165da08d
