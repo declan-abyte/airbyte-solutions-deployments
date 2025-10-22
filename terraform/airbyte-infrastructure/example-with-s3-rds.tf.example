@@ -1,0 +1,346 @@
+# Example configuration showing how to use the S3 and RDS modules
+# with your existing EKS infrastructure
+#
+# To use this example:
+# 1. Copy this file to your environment directory (e.g., declan/)
+# 2. Rename it to something like additional-resources.tf
+# 3. Customize the values for your needs
+# 4. Run terraform plan and terraform apply
+
+################################################################################
+# S3 Bucket for Airbyte Data Storage
+################################################################################
+
+module "airbyte_data_bucket" {
+  source = "../../modules/s3"
+
+  bucket_name       = "${var.cluster_name}-airbyte-data"
+  enable_versioning = true
+  create_kms_key    = true
+
+  # Lifecycle rules for cost optimization
+  lifecycle_rules = [
+    {
+      id                         = "archive-old-data"
+      enabled                    = true
+      filter_prefix              = "data/"
+      transition_days            = 90
+      transition_storage_class   = "STANDARD_IA"
+      expiration_days            = 365
+      noncurrent_version_expiration_days = 30
+    }
+  ]
+
+  # CORS configuration if needed for web access
+  cors_rules = [
+    {
+      allowed_headers = ["*"]
+      allowed_methods = ["GET", "HEAD"]
+      allowed_origins = ["https://*.example.com"]
+      max_age_seconds = 3000
+    }
+  ]
+
+  tags = var.tags
+}
+
+################################################################################
+# S3 Bucket for Airbyte Logs
+################################################################################
+
+module "airbyte_logs_bucket" {
+  source = "../../modules/s3"
+
+  bucket_name       = "${var.cluster_name}-airbyte-logs"
+  enable_versioning = false
+
+  lifecycle_rules = [
+    {
+      id              = "expire-old-logs"
+      enabled         = true
+      expiration_days = 90
+    }
+  ]
+
+  tags = merge(var.tags, { Purpose = "logs" })
+}
+
+################################################################################
+# S3 Bucket for State Files (Optional)
+################################################################################
+
+module "airbyte_state_bucket" {
+  source = "../../modules/s3"
+
+  bucket_name       = "${var.cluster_name}-airbyte-state"
+  enable_versioning = true
+  create_kms_key    = true
+
+  # Keep state files for longer
+  lifecycle_rules = [
+    {
+      id                                          = "archive-old-versions"
+      enabled                                     = true
+      noncurrent_version_transition_days          = 30
+      noncurrent_version_transition_storage_class = "STANDARD_IA"
+      noncurrent_version_expiration_days          = 90
+    }
+  ]
+
+  tags = merge(var.tags, { Purpose = "state" })
+}
+
+################################################################################
+# RDS PostgreSQL for Airbyte Metadata
+################################################################################
+
+module "airbyte_metadata_db" {
+  source = "../../modules/rds"
+
+  identifier        = "${var.cluster_name}-airbyte-metadata"
+  engine            = "postgres"
+  engine_version    = "15.4"
+  instance_class    = "db.t3.medium"
+  allocated_storage = 100
+  max_allocated_storage = 500
+  storage_type      = "gp3"
+  storage_encrypted = true
+
+  database_name = "airbyte"
+  username      = "airbyte_admin"
+  password      = var.airbyte_db_password  # Add this to your variables.tf
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+
+  # Allow access from EKS cluster
+  allowed_security_groups = [module.eks.cluster_security_group_id]
+
+  # Custom PostgreSQL parameters for Airbyte
+  create_db_parameter_group = true
+  parameter_group_family    = "postgres15"
+  parameters = [
+    {
+      name  = "max_connections"
+      value = "200"
+    },
+    {
+      name  = "shared_buffers"
+      value = "{DBInstanceClassMemory/32768}"
+    },
+    {
+      name  = "log_statement"
+      value = "ddl"
+    },
+    {
+      name  = "log_min_duration_statement"
+      value = "1000"  # Log queries taking more than 1 second
+    }
+  ]
+
+  # Backup configuration
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+  skip_final_snapshot    = false
+
+  # Maintenance window
+  maintenance_window         = "Mon:04:00-Mon:05:00"
+  auto_minor_version_upgrade = true
+
+  # Monitoring
+  monitoring_interval              = 60
+  performance_insights_enabled     = true
+  performance_insights_retention_period = 7
+  enabled_cloudwatch_logs_exports  = ["postgresql", "upgrade"]
+
+  # High availability for production
+  multi_az            = true
+  deletion_protection = true
+
+  tags = merge(var.tags, { Purpose = "metadata" })
+}
+
+################################################################################
+# RDS PostgreSQL for Application Database (Optional)
+################################################################################
+
+module "airbyte_application_db" {
+  source = "../../modules/rds"
+
+  identifier             = "${var.cluster_name}-airbyte-app"
+  engine                 = "postgres"
+  engine_version         = "15.4"
+  instance_class         = "db.r6g.large"
+  allocated_storage      = 500
+  max_allocated_storage  = 2000
+  storage_type           = "gp3"
+  storage_throughput     = 200
+  storage_encrypted      = true
+  create_kms_key        = true
+
+  database_name = "airbyte_app"
+  username      = "app_admin"
+  password      = var.airbyte_app_db_password  # Add this to your variables.tf
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+
+  # Allow access from EKS cluster
+  allowed_security_groups = [module.eks.cluster_security_group_id]
+
+  # Performance-tuned parameters
+  create_db_parameter_group = true
+  parameter_group_family    = "postgres15"
+  parameters = [
+    {
+      name  = "max_connections"
+      value = "500"
+    },
+    {
+      name  = "shared_buffers"
+      value = "{DBInstanceClassMemory/16384}"
+    },
+    {
+      name  = "effective_cache_size"
+      value = "{DBInstanceClassMemory/8192}"
+    },
+    {
+      name  = "maintenance_work_mem"
+      value = "2097152"  # 2GB in KB
+    },
+    {
+      name  = "checkpoint_completion_target"
+      value = "0.9"
+    },
+    {
+      name  = "wal_buffers"
+      value = "16384"  # 16MB in 8KB units
+    },
+    {
+      name  = "default_statistics_target"
+      value = "100"
+    },
+    {
+      name  = "random_page_cost"
+      value = "1.1"
+    },
+    {
+      name  = "effective_io_concurrency"
+      value = "200"
+    },
+    {
+      name  = "work_mem"
+      value = "4194304"  # 4GB in KB
+    }
+  ]
+
+  backup_retention_period = 14
+  backup_window          = "03:00-04:00"
+  skip_final_snapshot    = false
+
+  maintenance_window         = "Mon:04:00-Mon:05:00"
+  auto_minor_version_upgrade = true
+
+  monitoring_interval              = 60
+  performance_insights_enabled     = true
+  performance_insights_retention_period = 731  # 2 years
+  enabled_cloudwatch_logs_exports  = ["postgresql", "upgrade"]
+
+  multi_az            = true
+  deletion_protection = true
+
+  tags = merge(var.tags, { Purpose = "application" })
+}
+
+################################################################################
+# Outputs
+################################################################################
+
+output "s3_data_bucket_name" {
+  description = "Name of the S3 bucket for Airbyte data storage"
+  value       = module.airbyte_data_bucket.bucket_id
+}
+
+output "s3_data_bucket_arn" {
+  description = "ARN of the S3 bucket for Airbyte data storage"
+  value       = module.airbyte_data_bucket.bucket_arn
+}
+
+output "s3_logs_bucket_name" {
+  description = "Name of the S3 bucket for Airbyte logs"
+  value       = module.airbyte_logs_bucket.bucket_id
+}
+
+output "metadata_db_endpoint" {
+  description = "Connection endpoint for Airbyte metadata database"
+  value       = module.airbyte_metadata_db.db_instance_endpoint
+}
+
+output "metadata_db_name" {
+  description = "Name of the Airbyte metadata database"
+  value       = module.airbyte_metadata_db.db_instance_name
+}
+
+output "metadata_db_username" {
+  description = "Master username for the metadata database"
+  value       = module.airbyte_metadata_db.db_instance_username
+  sensitive   = true
+}
+
+output "metadata_db_security_group_id" {
+  description = "Security group ID for the metadata database"
+  value       = module.airbyte_metadata_db.security_group_id
+}
+
+output "application_db_endpoint" {
+  description = "Connection endpoint for Airbyte application database"
+  value       = module.airbyte_application_db.db_instance_endpoint
+}
+
+output "application_db_name" {
+  description = "Name of the Airbyte application database"
+  value       = module.airbyte_application_db.db_instance_name
+}
+
+################################################################################
+# Additional Variables Needed
+################################################################################
+
+# Add these to your variables.tf file:
+
+# variable "airbyte_db_password" {
+#   description = "Password for Airbyte metadata database master user"
+#   type        = string
+#   sensitive   = true
+# }
+
+# variable "airbyte_app_db_password" {
+#   description = "Password for Airbyte application database master user"
+#   type        = string
+#   sensitive   = true
+# }
+
+################################################################################
+# Usage Notes
+################################################################################
+
+# 1. Configure S3 bucket access for Airbyte pods via IRSA:
+#    - Create an IAM role for the Airbyte service account
+#    - Attach policies granting access to the S3 buckets
+#    - Annotate the Kubernetes service account with the IAM role ARN
+
+# 2. Configure database access:
+#    - Store credentials in AWS Secrets Manager or Kubernetes secrets
+#    - Use the outputs (endpoint, database name, username) to configure Airbyte
+
+# 3. Monitor your resources:
+#    - Enable CloudWatch alarms for RDS metrics
+#    - Set up S3 event notifications if needed
+#    - Review Performance Insights for database optimization
+
+# 4. Cost optimization:
+#    - Review S3 lifecycle rules and adjust based on access patterns
+#    - Consider S3 Intelligent-Tiering for unpredictable access patterns
+#    - Right-size RDS instances based on actual usage metrics
+#    - Use Reserved Instances or Savings Plans for production workloads
+
